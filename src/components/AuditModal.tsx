@@ -158,7 +158,7 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
         product_name: productInfo?.title || query,
         current_total: verdict.final_total,
         patterns_to_strip: verdict.dark_patterns_detected,
-        use_mock: true,
+        use_mock: false,
       },
       (event: AuditEvent) => {
         let prefix = '[DOM INTERACTION]';

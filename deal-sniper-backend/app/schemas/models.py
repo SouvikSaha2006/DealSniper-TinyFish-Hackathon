@@ -26,7 +26,7 @@ EventType = Literal[
 class ArbitrageRequest(BaseModel):
     query: str = Field(default="Sony WH-1000XM5", description="Product to arbitrage across retailers")
     postal_code: str = Field(default="560001", description="Target destination postal code")
-    use_mock: bool = Field(default=True, description="Enable simulated mock stream")
+    use_mock: bool = Field(default=False, description="Enable simulated mock stream")
 
 
 class MerchantCheckoutSummary(BaseModel):
@@ -59,7 +59,7 @@ class StripRequest(BaseModel):
     product_name: str = Field(..., description="Name or title of the product in cart")
     current_total: float = Field(..., description="Current un-sanitized cart total")
     patterns_to_strip: List[str] = Field(default_factory=list, description="List of detected dark patterns to strip")
-    use_mock: bool = Field(default=True, description="Enable deterministic mock simulation")
+    use_mock: bool = Field(default=False, description="Enable deterministic mock simulation")
 
 
 class StripResult(BaseModel):

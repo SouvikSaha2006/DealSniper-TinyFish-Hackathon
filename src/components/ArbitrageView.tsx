@@ -59,7 +59,7 @@ export default function ArbitrageView({
       {
         query,
         postal_code: postalCode,
-        use_mock: true,
+        use_mock: false,
       },
       (event: AuditEvent) => {
         const rawType = event.rawType || '';

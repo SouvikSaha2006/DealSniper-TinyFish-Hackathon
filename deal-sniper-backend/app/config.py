@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     ENVIRONMENT: str = "development"
+    USE_MOCK_FALLBACK: bool = False
 
     # TinyFish API endpoints
     TINYSEARCH_URL: str = "https://api.search.tinyfish.ai"
@@ -19,7 +20,11 @@ class Settings(BaseSettings):
     AGENT_SSE_TIMEOUT_SECONDS: float = 180.0
 
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
+        env_file=(
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
+            os.path.join(os.getcwd(), ".env"),
+            ".env",
+        ),
         env_file_encoding="utf-8",
         extra="ignore"
     )

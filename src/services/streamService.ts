@@ -407,7 +407,7 @@ export async function streamAudit(
       body: JSON.stringify({
         query,
         postal_code: postalCode || '560001',
-        use_mock: true,
+        use_mock: false,
       }),
       signal,
     });
