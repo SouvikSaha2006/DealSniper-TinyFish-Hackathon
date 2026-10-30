@@ -22,6 +22,8 @@ export interface ProductInfo {
   currency: string;
   description?: string;
   image_url?: string;
+  merchant_name?: string;
+  extracted_at?: string;
 }
 
 export interface CartBreakdown {
@@ -37,6 +39,19 @@ export interface CartBreakdown {
   dark_patterns_detected: string[];
   audit_summary?: string;
   regulatory_scorecard?: RegulatoryScorecard;
+  source_url?: string;
+  merchant_name?: string;
+  extracted_at?: string;
+}
+
+export interface AuditResult {
+  product: ProductInfo;
+  cart_breakdown: CartBreakdown;
+  source_url: string;
+  merchant_name: string;
+  extracted_at: string;
+  regulatory_scorecard?: RegulatoryScorecard;
+  postal_code: string;
 }
 
 export interface StripRequest {
@@ -64,7 +79,9 @@ export type AuditEventType =
   | 'ERROR'
   | 'STRIP_START'
   | 'STRIP_ACTION'
-  | 'STRIP_COMPLETE';
+  | 'STRIP_COMPLETE'
+  | 'LIVE_URL_FOUND'
+  | 'LIVE_FETCH';
 
 export interface AuditEvent {
   type: AuditEventType;

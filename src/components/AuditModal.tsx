@@ -22,6 +22,8 @@ import {
   ChevronUp,
   Swords,
   ScanSearch,
+  Zap,
+  FlaskConical,
 } from 'lucide-react';
 import ArbitrageView from './ArbitrageView';
 import {
@@ -44,6 +46,12 @@ interface AuditModalProps {
 
 export default function AuditModal({ isOpen, onClose, initialQuery = '' }: AuditModalProps) {
   const [auditMode, setAuditMode] = useState<'single' | 'arbitrage'>('single');
+  const [liveMode, setLiveMode] = useState<'live' | 'mock'>('live');
+  const [liveSource, setLiveSource] = useState<{
+    sourceUrl?: string;
+    merchantName?: string;
+    extractedAt?: string;
+  } | null>(null);
   const [query, setQuery] = useState(initialQuery || 'Sony WH-1000XM5');
   const [postalCode, setPostalCode] = useState('560001');
   const [isRunning, setIsRunning] = useState(false);
@@ -104,6 +112,7 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
     setVerdict(null);
     setStrippedResult(null);
     setIsStripping(false);
+    setLiveSource(null);
 
     await streamAudit(
       auditQuery,
@@ -111,8 +120,35 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
       (event: AuditEvent) => {
         setLogs((prev) => [...prev, event]);
 
-        if (event.data?.product) {
-          setProductInfo(event.data.product);
+        if (event.type === 'LIVE_URL_FOUND' || event.rawType === 'LIVE_URL_FOUND') {
+          setLiveSource((prev) => ({
+            ...prev,
+            sourceUrl: event.data?.source_url || event.data?.url,
+            merchantName: event.data?.merchant_name || event.data?.merchant,
+            extractedAt: event.data?.extracted_at || new Date().toISOString(),
+          }));
+        }
+
+        if (event.type === 'LIVE_FETCH' || event.rawType === 'LIVE_FETCH') {
+          setLiveSource((prev) => ({
+            ...prev,
+            sourceUrl: event.data?.source_url || event.data?.url || prev?.sourceUrl,
+            merchantName: event.data?.merchant_name || event.data?.merchant || prev?.merchantName,
+            extractedAt: event.data?.extracted_at || new Date().toISOString(),
+          }));
+        }
+
+        const prod = event.data?.product;
+        if (prod) {
+          setProductInfo(prod);
+          if (prod.url) {
+            setLiveSource((prev) => ({
+              ...prev,
+              sourceUrl: prod.url,
+              merchantName: prod.merchant_name || prod.store_name || prev?.merchantName,
+              extractedAt: prod.extracted_at || prev?.extractedAt || new Date().toISOString(),
+            }));
+          }
         }
 
         if (event.type === 'STREAMING_URL' || event.data?.streaming_url || event.data?.stream_url) {
@@ -123,6 +159,13 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
 
         if (event.type === 'AUDIT_COMPLETE' && event.data?.cart_breakdown) {
           setVerdict(event.data.cart_breakdown);
+          if (event.data.source_url || event.data.cart_breakdown.source_url) {
+            setLiveSource({
+              sourceUrl: event.data.source_url || event.data.cart_breakdown.source_url,
+              merchantName: event.data.merchant_name || event.data.cart_breakdown.merchant_name,
+              extractedAt: event.data.extracted_at || event.data.cart_breakdown.extracted_at || new Date().toISOString(),
+            });
+          }
           setIsRunning(false);
         }
 
@@ -130,7 +173,8 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
           setIsRunning(false);
         }
       },
-      abortController.signal
+      abortController.signal,
+      liveMode === 'mock'
     );
 
     setIsRunning(false);
@@ -280,9 +324,33 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
                 </button>
               </div>
 
-              <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
-                {auditMode === 'single' ? 'Single Cart Funnel Deep Scan' : 'Dual-Agent Real-Checkout Comparison'}
-              </span>
+              {/* Live Web Mode vs Simulated Sandbox Toggle */}
+              <div className="inline-flex p-1 rounded-xl bg-background/80 border border-border shadow-xs">
+                <button
+                  onClick={() => setLiveMode('live')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    liveMode === 'live'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Query live e-commerce websites and real carts using TinyFish Web Agent API"
+                >
+                  <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>⚡ Live Web Mode (Real-Time)</span>
+                </button>
+                <button
+                  onClick={() => setLiveMode('mock')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    liveMode === 'mock'
+                      ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Switch to offline simulated sandbox for zero-dependency presentations"
+                >
+                  <FlaskConical className="w-3.5 h-3.5 text-amber-500" />
+                  <span>🧪 Simulated Sandbox (Offline)</span>
+                </button>
+              </div>
             </div>
 
             {auditMode === 'arbitrage' ? (
@@ -366,6 +434,50 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
 
             {/* Dynamic Content Area: Verdict, Terminal & Live Sandbox */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Point-in-Time Live Verification Badge & Direct Source Link */}
+              {(() => {
+                const effectiveUrl = liveSource?.sourceUrl || verdict?.source_url || productInfo?.url;
+                const effectiveMerchant = liveSource?.merchantName || verdict?.merchant_name || productInfo?.merchant_name || productInfo?.store_name;
+                const effectiveExtractedAt = liveSource?.extractedAt || verdict?.extracted_at || productInfo?.extracted_at;
+
+                if (!effectiveUrl) return null;
+
+                let hostname = 'Live Retailer';
+                try {
+                  hostname = new URL(effectiveUrl).hostname;
+                } catch {
+                  hostname = effectiveMerchant || 'Live Retailer';
+                }
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-secondary/50 border border-border/80 shadow-xs"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={effectiveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-secondary text-foreground hover:bg-secondary/80 border border-border transition-all shadow-xs group cursor-pointer"
+                      >
+                        <span>Source: {effectiveMerchant || hostname}</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-accent group-hover:translate-x-0.5 transition-transform" />
+                      </a>
+                      <span className="text-[11px] text-muted-foreground font-mono hidden md:inline truncate max-w-sm">
+                        {effectiveUrl}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Verified live via TinyFish at {effectiveExtractedAt ? new Date(effectiveExtractedAt).toLocaleTimeString() : new Date().toLocaleTimeString()}</span>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
               {/* Audit Verdict Banner: Either Predatory Drip Alert OR Sanitized Success Card */}
               {verdict && (
                 strippedResult ? (

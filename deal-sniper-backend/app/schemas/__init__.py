@@ -11,6 +11,8 @@ from .models import (
     ArbitrageRequest,
     MerchantCheckoutSummary,
     ArbitrageResult,
+    AuditMetrics,
+    AuditResult,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     "ArbitrageRequest",
     "MerchantCheckoutSummary",
     "ArbitrageResult",
+    "AuditMetrics",
+    "AuditResult",
 ]

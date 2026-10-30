@@ -20,6 +20,8 @@ EventType = Literal[
     "AGENT_STREAM_A",
     "AGENT_STREAM_B",
     "ARBITRAGE_COMPLETE",
+    "LIVE_URL_FOUND",
+    "LIVE_FETCH",
 ]
 
 
@@ -86,6 +88,8 @@ class ProductStickerInfo(BaseModel):
     currency: str = Field(default="INR", description="Currency symbol or code")
     description: Optional[str] = Field(default=None, description="Short product description or specs")
     image_url: Optional[str] = Field(default=None, description="Product image thumbnail URL")
+    merchant_name: Optional[str] = Field(default=None, description="Extracted retailer name")
+    extracted_at: Optional[str] = Field(default=None, description="Point-in-time ISO timestamp")
 
 
 class ViolationItem(BaseModel):
@@ -117,6 +121,29 @@ class CartBreakdown(BaseModel):
     dark_patterns_detected: List[str] = Field(default_factory=list, description="Identified dark patterns")
     audit_summary: Optional[str] = Field(default=None, description="Human-readable audit breakdown summary")
     regulatory_scorecard: Optional[RegulatoryScorecard] = Field(default=None, description="FTC & CCPA regulatory scorecard")
+    source_url: Optional[str] = Field(default=None, description="The exact real URL scraped")
+    merchant_name: Optional[str] = Field(default=None, description="Retailer name (e.g. Amazon.in, Croma)")
+    extracted_at: Optional[str] = Field(default=None, description="Point-in-time ISO timestamp")
+
+
+class AuditMetrics(BaseModel):
+    source_url: str = Field(..., description="The exact real URL scraped")
+    merchant_name: str = Field(..., description="Retailer name (e.g. Amazon.in, Croma)")
+    extracted_at: str = Field(..., description="ISO timestamp proving point-in-time capture")
+    advertised_price: float
+    final_total: float
+    drip_percentage: float
+    dark_patterns_count: int
+
+
+class AuditResult(BaseModel):
+    product: ProductStickerInfo
+    cart_breakdown: CartBreakdown
+    source_url: str = Field(..., description="The exact real URL scraped")
+    merchant_name: str = Field(..., description="Retailer name (e.g. Amazon.in, Croma)")
+    extracted_at: str = Field(..., description="ISO timestamp proving point-in-time capture")
+    regulatory_scorecard: Optional[RegulatoryScorecard] = None
+    postal_code: str
 
 
 class AuditStreamEvent(BaseModel):

@@ -1,63 +1,27 @@
-export interface ProductInfo {
-  title: string;
-  store_name: string;
-  url: string;
-  advertised_price: number;
-  currency: string;
-  description?: string;
-  image_url?: string;
-}
-
 export type {
+  ProductInfo,
+  CartBreakdown,
+  AuditResult,
   ViolationItem,
   RegulatoryScorecard,
   ArbitrageRequest,
   MerchantCheckoutSummary,
   ArbitrageResult,
+  StripRequest,
+  StripResult,
+  AuditEventType,
 } from '../types';
-import type { RegulatoryScorecard, ViolationItem, ArbitrageRequest, ArbitrageResult } from '../types';
-
-export interface CartBreakdown {
-  base_price: number;
-  handling_fee: number;
-  delivery_fee: number;
-  taxes: number;
-  hidden_surcharges: number;
-  final_total: number;
-  delta_amount: number;
-  delta_percentage: number;
-  currency: string;
-  dark_patterns_detected: string[];
-  audit_summary?: string;
-  regulatory_scorecard?: RegulatoryScorecard;
-}
-
-export interface StripRequest {
-  cart_session_id: string;
-  product_name: string;
-  current_total: number;
-  patterns_to_strip?: string[];
-  use_mock?: boolean;
-}
-
-export interface StripResult {
-  original_total: number;
-  sanitized_total: number;
-  total_saved: number;
-  items_removed: string[];
-  clean_cart_url: string;
-  status: string;
-}
-
-export type AuditEventType =
-  | 'STARTED'
-  | 'PROGRESS'
-  | 'STREAMING_URL'
-  | 'AUDIT_COMPLETE'
-  | 'ERROR'
-  | 'STRIP_START'
-  | 'STRIP_ACTION'
-  | 'STRIP_COMPLETE';
+import type {
+  ProductInfo,
+  CartBreakdown,
+  RegulatoryScorecard,
+  ViolationItem,
+  ArbitrageRequest,
+  ArbitrageResult,
+  StripRequest,
+  StripResult,
+  AuditEventType,
+} from '../types';
 
 export interface AuditEvent {
   type: AuditEventType;
@@ -393,7 +357,8 @@ export async function streamAudit(
   query: string,
   postalCode: string,
   onEvent: (ev: AuditEvent) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  useMock: boolean = false
 ): Promise<void> {
   const BACKEND_URL = 'http://localhost:8000/api/audit/stream';
 
@@ -407,7 +372,7 @@ export async function streamAudit(
       body: JSON.stringify({
         query,
         postal_code: postalCode || '560001',
-        use_mock: false,
+        use_mock: useMock,
       }),
       signal,
     });
@@ -448,6 +413,10 @@ export async function streamAudit(
 
             if (serverEvent === 'DISCOVERY' || serverEvent === 'STARTED') {
               normalizedType = 'STARTED';
+            } else if (serverEvent === 'LIVE_URL_FOUND') {
+              normalizedType = 'LIVE_URL_FOUND';
+            } else if (serverEvent === 'LIVE_FETCH') {
+              normalizedType = 'LIVE_FETCH';
             } else if (serverEvent === 'STREAM_URL' || serverEvent === 'STREAMING_URL') {
               normalizedType = 'STREAMING_URL';
             } else if (serverEvent === 'AUDIT_COMPLETE') {
