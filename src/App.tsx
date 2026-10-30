@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ShieldAlert,
-  Sparkles,
+  ArrowUpRight,
+  Play,
   ArrowRight,
+  Sparkles,
   ScanSearch,
-  Eye,
   AlertTriangle,
+  Eye,
   Zap,
-  CheckCircle2,
-  Lock,
 } from 'lucide-react';
+import DashboardPreview from './components/DashboardPreview';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Live Scanner');
@@ -35,7 +35,7 @@ export default function App() {
       />
 
       {/* Atmospheric Vignette & Contrast Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background/90 pointer-events-none z-[1]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background/95 pointer-events-none z-[1]" />
 
       {/* Navigation Header */}
       <header className="relative z-20 w-full border-b border-border/70 bg-background/75 backdrop-blur-md px-6 lg:px-10 py-3.5 flex items-center justify-between transition-all">
@@ -55,7 +55,7 @@ export default function App() {
         </div>
 
         {/* Center/Right: Navigation Links & Launch Auditor CTA */}
-        <div className="flex items-center gap-1 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-6">
           <nav className="hidden md:flex items-center gap-1 bg-secondary/80 p-1 rounded-lg border border-border/60">
             {navLinks.map((item) => {
               const Icon = item.icon;
@@ -85,116 +85,74 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Viewport Content Scaffold */}
-      <main className="flex-1 relative z-10 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-4xl w-full flex flex-col items-center text-center space-y-6"
-        >
-          {/* Eyebrow Pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-background/80 backdrop-blur-sm text-xs font-medium text-foreground shadow-sm">
-            <ShieldAlert className="w-3.5 h-3.5 text-accent" />
-            <span>Autonomous Checkout Dark-Pattern Auditing</span>
-            <span className="text-border">|</span>
-            <span className="text-muted-foreground font-mono">v1.0-alpha</span>
-          </div>
-
-          {/* Typography Showcase with Instrument Serif & Inter */}
-          <div className="space-y-3 max-w-3xl">
-            <h1 className="font-display text-5xl sm:text-6xl md:text-7xl font-normal tracking-tight text-foreground leading-[1.08]">
-              Neutralize sneaky fees <br />
-              <span className="italic font-normal text-accent underline decoration-accent/30 decoration-wavy underline-offset-8">
-                before they reach checkout.
-              </span>
-            </h1>
-            <p className="font-body text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed pt-2">
-              Powered by TinyFish Mako web-agent orchestration. DealSniper autonomously navigates
-              multistep purchase flows, exposes deceptive drip pricing, pre-checked add-ons, and hidden service charges.
-            </p>
-          </div>
-
-          {/* Dashboard Preview Card using shadow-dashboard & design tokens */}
+      {/* Main Viewport Content Scaffold with Clean Bottom Overflow Clipping */}
+      <main className="flex-1 relative z-10 flex flex-col items-center justify-start text-center pt-5 sm:pt-8 md:pt-10 px-4 sm:px-6 overflow-hidden">
+        {/* Hero Section Container */}
+        <div className="max-w-4xl w-full flex flex-col items-center space-y-4 flex-shrink-0">
+          {/* Badge: fade up from y:10, duration 0.5s */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.15 }}
-            className="w-full mt-4 bg-background/85 backdrop-blur-xl border border-border rounded-xl p-6 shadow-dashboard text-left space-y-5"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/80 bg-background/80 backdrop-blur-sm text-xs font-medium text-foreground shadow-xs"
           >
-            {/* Card Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                  <ScanSearch className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-body font-semibold text-sm text-foreground">
-                    Active Inspection Pipeline
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Multi-turn checkout journey auditor powered by TinyFish API
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground font-mono font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  Tokens Loaded
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground font-mono font-medium">
-                  <Lock className="w-3.5 h-3.5 text-accent" />
-                  Zero-Tamper SSL
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Metrics / Dark-Pattern Detection Categories Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-              {[
-                { label: 'Drip Pricing', desc: 'Hidden checkout fees', stat: '98.4%', badge: 'Active' },
-                { label: 'Sneak into Cart', desc: 'Pre-checked warranties', stat: 'Zero-loss', badge: 'Active' },
-                { label: 'Fake Urgency', desc: 'Artificial countdowns', stat: 'Real-time', badge: 'Active' },
-                { label: 'Confirmshaming', desc: 'Manipulative opt-outs', stat: 'Flagged', badge: 'Active' },
-              ].map((metric) => (
-                <div
-                  key={metric.label}
-                  className="p-3.5 rounded-lg bg-secondary/60 border border-border/50 hover:border-accent/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium mb-1">
-                    <span>{metric.label}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-background text-accent border border-accent/20 font-mono">
-                      {metric.badge}
-                    </span>
-                  </div>
-                  <div className="font-display text-xl font-bold text-foreground">
-                    {metric.stat}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate mt-0.5">
-                    {metric.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <span>Autonomous Checkout Dark-Pattern Detection ✨</span>
           </motion.div>
+
+          {/* Headline: fade up from y:16, duration 0.6s, delay 0.1s */}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-normal tracking-tight text-foreground leading-[1.08] max-w-3xl"
+          >
+            Expose the <span className="italic font-normal">hidden</span> cost of checkout.
+          </motion.h1>
+
+          {/* Subheadline: fade up from y:16, duration 0.6s, delay 0.2s */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="font-body text-xs sm:text-sm md:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+          >
+            TinyFish web agents navigate dynamic cart funnels, enter postal codes, bypass pre-ticked add-ons, and audit true checkout totals in real time.
+          </motion.p>
+
+          {/* CTA Row: Primary pill button & circular Play/Demo button */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center justify-center gap-3 pt-1"
+          >
+            {/* Primary pill button "Audit a Checkout" with ArrowUpRight */}
+            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground font-body text-xs sm:text-sm font-semibold tracking-wide shadow-md hover:bg-primary/90 active:scale-95 transition-all group">
+              <span>Audit a Checkout</span>
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+
+            {/* Circular Play/Demo button with hover scale */}
+            <button
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-border bg-background/80 backdrop-blur-sm text-foreground shadow-xs hover:scale-110 active:scale-95 hover:border-accent/50 hover:text-accent transition-all duration-200 group"
+              title="Watch Demo"
+              aria-label="Watch Demo"
+            >
+              <Play className="w-4 h-4 fill-current ml-0.5 group-hover:text-accent transition-colors" />
+            </button>
+          </motion.div>
+        </div>
+
+        {/* Coded Dashboard Preview HUD: Clean overflow towards bottom */}
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full flex justify-center mt-5 sm:mt-7 flex-shrink-0"
+        >
+          <DashboardPreview />
         </motion.div>
       </main>
-
-      {/* Footer / Status Bar */}
-      <footer className="relative z-20 w-full border-t border-border/60 bg-background/70 backdrop-blur-sm px-6 py-2.5 flex items-center justify-between text-xs text-muted-foreground font-body">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 font-mono text-[11px]">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Mako Engine Node: Online
-          </span>
-          <span className="hidden sm:inline text-border">|</span>
-          <span className="hidden sm:inline text-[11px]">Autonomous Dark-Pattern Interceptor</span>
-        </div>
-        <div className="flex items-center gap-4 text-[11px] font-mono">
-          <span>Phase 1 Design System Initialized</span>
-        </div>
-      </footer>
     </div>
   );
 }
