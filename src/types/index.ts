@@ -97,3 +97,34 @@ export interface DemoPreset {
   advertised_price: number;
   expected_pattern: string;
 }
+
+export interface ArbitrageRequest {
+  query?: string;
+  postal_code?: string;
+  use_mock?: boolean;
+}
+
+export interface MerchantCheckoutSummary {
+  merchant_name: string;
+  advertised_price: number;
+  base_price: number;
+  shipping_fee: number;
+  convenience_fee: number;
+  tax_and_surcharges: number;
+  final_total: number;
+  dark_patterns_count: number;
+  dark_patterns: string[];
+  compliance_grade: string;
+  is_true_winner: boolean;
+}
+
+export interface ArbitrageResult {
+  product_name: string;
+  postal_code: string;
+  merchant_a: MerchantCheckoutSummary;
+  merchant_b: MerchantCheckoutSummary;
+  initial_perceived_winner: string;
+  actual_true_winner: string;
+  arbitrage_delta: number;
+  verdict_summary: string;
+}

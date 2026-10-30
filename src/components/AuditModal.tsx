@@ -20,7 +20,10 @@ import {
   Scale,
   ChevronDown,
   ChevronUp,
+  Swords,
+  ScanSearch,
 } from 'lucide-react';
+import ArbitrageView from './ArbitrageView';
 import {
   streamAudit,
   streamStripCart,
@@ -40,6 +43,7 @@ interface AuditModalProps {
 }
 
 export default function AuditModal({ isOpen, onClose, initialQuery = '' }: AuditModalProps) {
+  const [auditMode, setAuditMode] = useState<'single' | 'arbitrage'>('single');
   const [query, setQuery] = useState(initialQuery || 'Sony WH-1000XM5');
   const [postalCode, setPostalCode] = useState('560001');
   const [isRunning, setIsRunning] = useState(false);
@@ -249,12 +253,50 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
               </button>
             </div>
 
-            {/* Presets Bar for 1-Click Judging Demos */}
-            <div className="px-5 py-2.5 border-b border-border/60 bg-secondary/20 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mr-1">
-                <Sparkles className="w-3 h-3 text-accent" />
-                1-Click Demo Presets:
+            {/* Mode Toggle: Single Store Audit vs Cross-Merchant Arbitrage */}
+            <div className="px-5 py-2.5 border-b border-border/70 bg-secondary/30 flex items-center justify-between gap-3">
+              <div className="inline-flex p-1 rounded-xl bg-background/80 border border-border shadow-xs">
+                <button
+                  onClick={() => setAuditMode('single')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    auditMode === 'single'
+                      ? 'bg-accent text-accent-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <ScanSearch className="w-3.5 h-3.5" />
+                  <span>Single Store Audit</span>
+                </button>
+                <button
+                  onClick={() => setAuditMode('arbitrage')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    auditMode === 'arbitrage'
+                      ? 'bg-accent text-accent-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Swords className="w-3.5 h-3.5" />
+                  <span>⚔️ Cross-Merchant Arbitrage</span>
+                </button>
+              </div>
+
+              <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+                {auditMode === 'single' ? 'Single Cart Funnel Deep Scan' : 'Dual-Agent Real-Checkout Comparison'}
               </span>
+            </div>
+
+            {auditMode === 'arbitrage' ? (
+              <div className="flex-1 overflow-y-auto p-5">
+                <ArbitrageView initialQuery={query} initialPostal={postalCode} />
+              </div>
+            ) : (
+              <>
+                {/* Presets Bar for 1-Click Judging Demos */}
+                <div className="px-5 py-2.5 border-b border-border/60 bg-secondary/20 flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 mr-1">
+                    <Sparkles className="w-3 h-3 text-accent" />
+                    1-Click Demo Presets:
+                  </span>
               {DEMO_PRESETS.map((preset) => {
                 const isSelected = activePresetId === preset.id;
                 return (
@@ -817,6 +859,8 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
                 </div>
               </div>
             </div>
+          </>
+        )}
 
             {/* Modal Footer */}
             <div className="px-5 py-3 border-t border-border/70 bg-secondary/30 flex items-center justify-between text-xs text-muted-foreground">

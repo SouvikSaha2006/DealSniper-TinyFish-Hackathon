@@ -15,7 +15,43 @@ EventType = Literal[
     "STRIP_START",
     "STRIP_ACTION",
     "STRIP_COMPLETE",
+    "ARBITRAGE_DISCOVERY",
+    "MERCHANT_ASSIGNMENT",
+    "AGENT_STREAM_A",
+    "AGENT_STREAM_B",
+    "ARBITRAGE_COMPLETE",
 ]
+
+
+class ArbitrageRequest(BaseModel):
+    query: str = Field(default="Sony WH-1000XM5", description="Product to arbitrage across retailers")
+    postal_code: str = Field(default="560001", description="Target destination postal code")
+    use_mock: bool = Field(default=True, description="Enable simulated mock stream")
+
+
+class MerchantCheckoutSummary(BaseModel):
+    merchant_name: str = Field(..., description="E-commerce retailer name")
+    advertised_price: float = Field(..., description="Sticker listing price on search")
+    base_price: float = Field(..., description="Item cart base price")
+    shipping_fee: float = Field(default=0.0, description="Delivery or shipping charge")
+    convenience_fee: float = Field(default=0.0, description="Platform or convenience fee")
+    tax_and_surcharges: float = Field(default=0.0, description="Taxes and pre-selected add-ons/surcharges")
+    final_total: float = Field(..., description="True checkout out-of-pocket cost")
+    dark_patterns_count: int = Field(default=0, description="Number of predatory patterns identified")
+    dark_patterns: List[str] = Field(default_factory=list, description="List of identified dark patterns")
+    compliance_grade: str = Field(..., description="GRADE A | GRADE F")
+    is_true_winner: bool = Field(default=False, description="Whether this merchant is the true lowest cost")
+
+
+class ArbitrageResult(BaseModel):
+    product_name: str = Field(..., description="Product name audited")
+    postal_code: str = Field(..., description="Destination postal code")
+    merchant_a: MerchantCheckoutSummary = Field(..., description="First retailer (e.g., Bait Trap)")
+    merchant_b: MerchantCheckoutSummary = Field(..., description="Second retailer (e.g., Honest Store)")
+    initial_perceived_winner: str = Field(..., description="Retailer advertising lower search price")
+    actual_true_winner: str = Field(..., description="Retailer cheaper at final checkout")
+    arbitrage_delta: float = Field(..., description="Net consumer savings at true checkout")
+    verdict_summary: str = Field(..., description="Executive comparative analysis verdict")
 
 
 class StripRequest(BaseModel):

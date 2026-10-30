@@ -8,6 +8,9 @@ from .models import (
     StripResult,
     ViolationItem,
     RegulatoryScorecard,
+    ArbitrageRequest,
+    MerchantCheckoutSummary,
+    ArbitrageResult,
 )
 
 __all__ = [
@@ -20,4 +23,7 @@ __all__ = [
     "StripResult",
     "ViolationItem",
     "RegulatoryScorecard",
+    "ArbitrageRequest",
+    "MerchantCheckoutSummary",
+    "ArbitrageResult",
 ]

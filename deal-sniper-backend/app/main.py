@@ -62,6 +62,7 @@ async def root():
             "audit_stream_post": "POST /api/audit/stream",
             "audit_stream_get": "GET /api/audit/stream?query=Sony+WH-1000XM5&postal_code=560001",
             "audit_strip_post": "POST /api/audit/strip-stream",
+            "audit_arbitrage_post": "POST /api/audit/arbitrage-stream",
         },
     }
 
