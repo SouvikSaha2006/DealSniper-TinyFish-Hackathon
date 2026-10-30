@@ -11,9 +11,12 @@ import {
   Zap,
 } from 'lucide-react';
 import DashboardPreview from './components/DashboardPreview';
+import AuditModal from './components/AuditModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Live Scanner');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPresetQuery, setSelectedPresetQuery] = useState('Sony WH-1000XM5');
 
   const navLinks = [
     { label: 'Live Scanner', icon: ScanSearch },
@@ -21,6 +24,13 @@ export default function App() {
     { label: 'Benchmarks', icon: Eye },
     { label: 'API', icon: Zap },
   ];
+
+  const handleOpenAuditor = (presetQuery?: string) => {
+    if (presetQuery) {
+      setSelectedPresetQuery(presetQuery);
+    }
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden relative selection:bg-accent/20">
@@ -41,7 +51,7 @@ export default function App() {
       <header className="relative z-20 w-full border-b border-border/70 bg-background/75 backdrop-blur-md px-6 lg:px-10 py-3.5 flex items-center justify-between transition-all">
         {/* Left: Brand & TinyFish Badge */}
         <div className="flex items-center gap-3.5">
-          <div className="flex items-center gap-2 group cursor-pointer">
+          <div className="flex items-center gap-2 group cursor-pointer" onClick={() => handleOpenAuditor()}>
             <span className="text-accent text-lg animate-pulse">✦</span>
             <span className="font-display text-2xl font-bold tracking-tight text-foreground transition-colors group-hover:text-accent">
               DealSniper
@@ -63,7 +73,12 @@ export default function App() {
               return (
                 <button
                   key={item.label}
-                  onClick={() => setActiveTab(item.label)}
+                  onClick={() => {
+                    setActiveTab(item.label);
+                    if (item.label === 'Live Scanner') {
+                      handleOpenAuditor();
+                    }
+                  }}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
                     isActive
                       ? 'bg-background text-foreground shadow-sm'
@@ -77,7 +92,10 @@ export default function App() {
             })}
           </nav>
 
-          <button className="relative group inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-body text-xs font-semibold tracking-wide shadow-sm hover:bg-primary/90 active:scale-95 transition-all">
+          <button
+            onClick={() => handleOpenAuditor()}
+            className="relative group inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-body text-xs font-semibold tracking-wide shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+          >
             <Sparkles className="w-3.5 h-3.5 text-accent" />
             <span>Launch Auditor</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -94,7 +112,8 @@ export default function App() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/80 bg-background/80 backdrop-blur-sm text-xs font-medium text-foreground shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/80 bg-background/80 backdrop-blur-sm text-xs font-medium text-foreground shadow-xs cursor-pointer hover:border-accent/40 transition-colors"
+            onClick={() => handleOpenAuditor()}
           >
             <span>Autonomous Checkout Dark-Pattern Detection ✨</span>
           </motion.div>
@@ -127,16 +146,20 @@ export default function App() {
             className="flex items-center justify-center gap-3 pt-1"
           >
             {/* Primary pill button "Audit a Checkout" with ArrowUpRight */}
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground font-body text-xs sm:text-sm font-semibold tracking-wide shadow-md hover:bg-primary/90 active:scale-95 transition-all group">
+            <button
+              onClick={() => handleOpenAuditor()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground font-body text-xs sm:text-sm font-semibold tracking-wide shadow-md hover:bg-primary/90 active:scale-95 transition-all group"
+            >
               <span>Audit a Checkout</span>
               <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
 
             {/* Circular Play/Demo button with hover scale */}
             <button
+              onClick={() => handleOpenAuditor('Sony WH-1000XM5')}
               className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-border bg-background/80 backdrop-blur-sm text-foreground shadow-xs hover:scale-110 active:scale-95 hover:border-accent/50 hover:text-accent transition-all duration-200 group"
-              title="Watch Demo"
-              aria-label="Watch Demo"
+              title="Watch Live Auditor Demo"
+              aria-label="Watch Live Auditor Demo"
             >
               <Play className="w-4 h-4 fill-current ml-0.5 group-hover:text-accent transition-colors" />
             </button>
@@ -148,11 +171,20 @@ export default function App() {
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full flex justify-center mt-5 sm:mt-7 flex-shrink-0"
+          className="w-full flex justify-center mt-5 sm:mt-7 flex-shrink-0 cursor-pointer"
+          onClick={() => handleOpenAuditor()}
+          title="Click to launch interactive live auditor"
         >
           <DashboardPreview />
         </motion.div>
       </main>
+
+      {/* Interactive Execution Modal */}
+      <AuditModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        initialQuery={selectedPresetQuery}
+      />
     </div>
   );
 }
