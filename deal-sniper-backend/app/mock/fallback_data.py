@@ -114,6 +114,40 @@ MOCK_CATALOG: Dict[str, Dict[str, Any]] = {
         },
         "stream_url": "https://view.tinyfish.ai/sessions/live-demo-jordan-1",
     },
+    "indigo": {
+        "title": "IndiGo Flight 6E-204 (BLR -> CCU) Non-Stop Economy Saver",
+        "store_name": "IndiGo Air Travel",
+        "url": "https://www.goindigo.in/booking/flight-select/blr-ccu",
+        "advertised_price": 4899.0,
+        "currency": "INR",
+        "description": "Bengaluru Kempegowda Intl (BLR) to Kolkata Netaji Subhash Chandra Bose Intl (CCU), 2h 25m, 15kg check-in baggage.",
+        "image_url": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&auto=format&fit=crop&q=80",
+        "candidates": [
+            {
+                "title": "IndiGo Flight 6E-204 BLR to CCU Saver Fare",
+                "store_name": "IndiGo Air Travel",
+                "url": "https://www.goindigo.in/booking/flight-select/blr-ccu",
+                "advertised_price": 4899.0,
+                "currency": "INR",
+            },
+            {
+                "title": "Air India Flight AI-772 BLR to CCU Standard",
+                "store_name": "Air India Portal",
+                "url": "https://www.airindia.com/booking/flight/blr-ccu",
+                "advertised_price": 5499.0,
+                "currency": "INR",
+            },
+        ],
+        "cart_data": {
+            "base_price": 4899.0,
+            "handling_fee": 350.0,        # Convenience fee per passenger
+            "delivery_fee": 420.0,        # User Development Fee (UDF)
+            "taxes": 295.0,               # Passenger Service Fee + GST
+            "hidden_surcharges": 450.0,   # Pre-selected middle/window seat selection & green carbon levy
+            "final_total": 6414.0,
+        },
+        "stream_url": "https://view.tinyfish.ai/sessions/live-demo-indigo-blr-ccu",
+    },
 }
 
 

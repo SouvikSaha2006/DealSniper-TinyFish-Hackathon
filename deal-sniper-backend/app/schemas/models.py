@@ -11,6 +11,7 @@ EventType = Literal[
     "STREAM_URL",
     "AUDIT_COMPLETE",
     "ERROR",
+    "NOTICE",
 ]
 
 

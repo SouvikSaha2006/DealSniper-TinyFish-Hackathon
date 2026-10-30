@@ -58,6 +58,7 @@ async def root():
         "documentation": "/docs",
         "endpoints": {
             "health": "GET /api/health",
+            "presets": "GET /api/presets",
             "audit_stream_post": "POST /api/audit/stream",
             "audit_stream_get": "GET /api/audit/stream?query=Sony+WH-1000XM5&postal_code=560001",
         },
