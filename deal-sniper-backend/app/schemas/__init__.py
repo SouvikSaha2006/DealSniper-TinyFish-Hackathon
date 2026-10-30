@@ -4,6 +4,8 @@ from .models import (
     CartBreakdown,
     AuditStreamEvent,
     EventType,
+    StripRequest,
+    StripResult,
 )
 
 __all__ = [
@@ -12,4 +14,6 @@ __all__ = [
     "CartBreakdown",
     "AuditStreamEvent",
     "EventType",
+    "StripRequest",
+    "StripResult",
 ]

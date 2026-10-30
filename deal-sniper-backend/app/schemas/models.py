@@ -12,7 +12,27 @@ EventType = Literal[
     "AUDIT_COMPLETE",
     "ERROR",
     "NOTICE",
+    "STRIP_START",
+    "STRIP_ACTION",
+    "STRIP_COMPLETE",
 ]
+
+
+class StripRequest(BaseModel):
+    cart_session_id: str = Field(default="session-live", description="ID of the active cart session to sanitize")
+    product_name: str = Field(..., description="Name or title of the product in cart")
+    current_total: float = Field(..., description="Current un-sanitized cart total")
+    patterns_to_strip: List[str] = Field(default_factory=list, description="List of detected dark patterns to strip")
+    use_mock: bool = Field(default=True, description="Enable deterministic mock simulation")
+
+
+class StripResult(BaseModel):
+    original_total: float = Field(..., description="Initial checkout total before sanitization")
+    sanitized_total: float = Field(..., description="Cleaned checkout total after stripping predatory add-ons")
+    total_saved: float = Field(..., description="Total currency saved by stripping predatory fees")
+    items_removed: List[str] = Field(default_factory=list, description="Itemized predatory line items stripped")
+    clean_cart_url: str = Field(..., description="Direct sanitized checkout URL with clean ref")
+    status: str = Field(default="SANITIZED", description="Sanitization outcome status")
 
 
 class AuditRequest(BaseModel):

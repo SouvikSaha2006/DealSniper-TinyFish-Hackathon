@@ -16,12 +16,15 @@ import {
   Radio,
   Lock,
   ExternalLink,
+  Wand2,
 } from 'lucide-react';
 import {
   streamAudit,
+  streamStripCart,
   AuditEvent,
   CartBreakdown,
   ProductInfo,
+  StripResult,
   DEMO_PRESETS,
   DemoPreset,
 } from '../services/streamService';
@@ -41,6 +44,8 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const [verdict, setVerdict] = useState<CartBreakdown | null>(null);
   const [activePresetId, setActivePresetId] = useState<string>('sony-xm5');
+  const [isStripping, setIsStripping] = useState(false);
+  const [strippedResult, setStrippedResult] = useState<StripResult | null>(null);
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -88,6 +93,8 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
     setStreamingUrl(null);
     setProductInfo(null);
     setVerdict(null);
+    setStrippedResult(null);
+    setIsStripping(false);
 
     await streamAudit(
       auditQuery,
@@ -120,10 +127,56 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
     setIsRunning(false);
   };
 
+  const handleStripPatterns = async () => {
+    if (!verdict || isStripping) return;
+
+    setIsStripping(true);
+
+    // Append initial live strip log into existing Terminal HUD
+    setLogs((prev) => [
+      ...prev,
+      {
+        type: 'PROGRESS',
+        rawType: 'STRIP_START',
+        message: '[TINYAGENT] Re-entering checkout DOM session to sanitize cart...',
+        timestamp: Date.now(),
+      },
+    ]);
+
+    const result = await streamStripCart(
+      {
+        cart_session_id: 'session-live-audit',
+        product_name: productInfo?.title || query,
+        current_total: verdict.final_total,
+        patterns_to_strip: verdict.dark_patterns_detected,
+        use_mock: true,
+      },
+      (event: AuditEvent) => {
+        let prefix = '[DOM INTERACTION]';
+        if (event.rawType === 'STRIP_START') prefix = '[TINYAGENT]';
+        else if (event.rawType === 'STRIP_COMPLETE') prefix = '[SUCCESS]';
+
+        setLogs((prev) => [
+          ...prev,
+          {
+            ...event,
+            message: `${prefix} ${event.message}`,
+          },
+        ]);
+      }
+    );
+
+    if (result) {
+      setStrippedResult(result);
+    }
+    setIsStripping(false);
+  };
+
   const handleSelectPreset = (preset: DemoPreset) => {
     setActivePresetId(preset.id);
     setQuery(preset.query);
     setPostalCode(preset.postal_code);
+    setStrippedResult(null);
     handleRunAudit(preset.query, preset.postal_code);
   };
 
@@ -266,86 +319,215 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
 
             {/* Dynamic Content Area: Verdict, Terminal & Live Sandbox */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Audit Verdict Banner (Highlighted when complete) */}
+              {/* Audit Verdict Banner: Either Predatory Drip Alert OR Sanitized Success Card */}
               {verdict && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-red-500/20 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="px-2.5 py-1 rounded-md bg-red-600 text-white font-mono text-xs font-bold tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        PREDATORY DRIP PRICING DETECTED
-                      </div>
-                      <span className="text-xs font-medium text-foreground">
-                        {productInfo?.store_name ? `Merchant: ${productInfo.store_name}` : 'Cart Audit Completed'}
-                      </span>
-                    </div>
-
-                    <div className="text-xs font-mono font-semibold text-red-600">
-                      Delta: +{verdict.currency} {verdict.delta_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (+{verdict.delta_percentage.toFixed(1)}%)
-                    </div>
-                  </div>
-
-                  {/* Price Comparison Summary */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
-                    <div className="p-2.5 rounded-lg bg-background/80 border border-border">
-                      <span className="text-[10px] text-muted-foreground uppercase font-medium block">
-                        Advertised Base
-                      </span>
-                      <span className="text-sm font-display font-bold text-foreground">
-                        {verdict.currency} {verdict.base_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-background/80 border border-border">
-                      <span className="text-[10px] text-muted-foreground uppercase font-medium block">
-                        Platform / Handling
-                      </span>
-                      <span className="text-sm font-mono font-semibold text-foreground">
-                        +{verdict.currency} {verdict.handling_fee.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-background/80 border border-border">
-                      <span className="text-[10px] text-muted-foreground uppercase font-medium block">
-                        Delivery / Surge
-                      </span>
-                      <span className="text-sm font-mono font-semibold text-foreground">
-                        +{verdict.currency} {verdict.delivery_fee.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/25">
-                      <span className="text-[10px] text-red-600 uppercase font-bold block">
-                        True Checkout Total
-                      </span>
-                      <span className="text-base font-display font-bold text-red-600">
-                        {verdict.currency} {verdict.final_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Dark Pattern Tags with Red Accent Styling */}
-                  <div className="pt-2">
-                    <span className="text-[11px] font-semibold text-foreground block mb-1.5">
-                      Unmasked Deceptive Checkout Vectors:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {verdict.dark_patterns_detected.map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 font-mono text-[11px] font-medium"
-                        >
-                          <ShieldAlert className="w-3 h-3 text-red-600 flex-shrink-0" />
-                          <span>{tag}</span>
+                strippedResult ? (
+                  /* High-Contrast Sanitized Success Card */
+                  <motion.div
+                    key="sanitized-success-card"
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3.5 shadow-sm"
+                  >
+                    {/* Top Row: Badge & Big Savings Highlight */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-mono text-xs font-bold tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Cart Sanitized Successfully
+                        </div>
+                        <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                          {productInfo?.store_name ? `Merchant: ${productInfo.store_name}` : 'TinyAgent Sanitization Complete'}
                         </span>
-                      ))}
+                      </div>
+
+                      {/* Highlighted Saving Badge */}
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white font-mono text-xs font-bold shadow-sm">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>You saved {verdict.currency} {strippedResult.total_saved.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
+
+                    {/* Price Comparison Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                      <div className="p-3 rounded-lg bg-background/80 border border-border">
+                        <span className="text-[10px] text-muted-foreground uppercase font-medium block">
+                          Predatory Checkout Total
+                        </span>
+                        <span className="text-sm font-mono font-medium text-muted-foreground line-through block mt-0.5">
+                          {verdict.currency} {strippedResult.original_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30">
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-300 uppercase font-bold block">
+                          New Sanitized Total
+                        </span>
+                        <span className="text-lg font-display font-bold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                          {verdict.currency} {strippedResult.sanitized_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <div className="col-span-2 sm:col-span-1 p-3 rounded-lg bg-background/80 border border-border flex flex-col justify-center">
+                        <span className="text-[10px] text-muted-foreground uppercase font-medium block">
+                          Sanitization Status
+                        </span>
+                        <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> 100% Surcharges Stripped
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Predatory Items Removed */}
+                    <div className="pt-1">
+                      <span className="text-[11px] font-semibold text-foreground/90 block mb-1.5">
+                        Predatory Charges Intercepted & Removed by TinyAgent:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {strippedResult.items_removed.map((item, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-mono text-[11px] font-medium"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                            <span>{item}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Secondary CTA: Proceed with Clean Cart */}
+                    <div className="pt-2 flex justify-end">
+                      <a
+                        href={strippedResult.clean_cart_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-md transition-all group cursor-pointer"
+                      >
+                        <span>Proceed with Clean Cart</span>
+                        <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </a>
+                    </div>
+                  </motion.div>
+                ) : (
+                  /* Predatory Drip Alert Card with Autonomous Stripper Action */
+                  <motion.div
+                    key="predatory-drip-card"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-red-500/20 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="px-2.5 py-1 rounded-md bg-red-600 text-white font-mono text-xs font-bold tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          PREDATORY DRIP PRICING DETECTED
+                        </div>
+                        <span className="text-xs font-medium text-foreground">
+                          {productInfo?.store_name ? `Merchant: ${productInfo.store_name}` : 'Cart Audit Completed'}
+                        </span>
+                      </div>
+
+                      <div className="text-xs font-mono font-semibold text-red-600">
+                        Delta: +{verdict.currency} {verdict.delta_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (+{verdict.delta_percentage.toFixed(1)}%)
+                      </div>
+                    </div>
+
+                    {/* Price Comparison Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                      <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                        <span className="text-[10px] text-muted-foreground uppercase font-medium block">
+                          Advertised Base
+                        </span>
+                        <span className="text-sm font-display font-bold text-foreground">
+                          {verdict.currency} {verdict.base_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                        <span className="text-[10px] text-muted-foreground uppercase font-medium block">
+                          Platform / Handling
+                        </span>
+                        <span className="text-sm font-mono font-semibold text-foreground">
+                          +{verdict.currency} {verdict.handling_fee.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-background/80 border border-border">
+                        <span className="text-[10px] text-muted-foreground uppercase font-medium block">
+                          Delivery / Surge
+                        </span>
+                        <span className="text-sm font-mono font-semibold text-foreground">
+                          +{verdict.currency} {verdict.delivery_fee.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/25">
+                        <span className="text-[10px] text-red-600 uppercase font-bold block">
+                          True Checkout Total
+                        </span>
+                        <span className="text-base font-display font-bold text-red-600">
+                          {verdict.currency} {verdict.final_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dark Pattern Tags with Red Accent Styling */}
+                    <div className="pt-2">
+                      <span className="text-[11px] font-semibold text-foreground block mb-1.5">
+                        Unmasked Deceptive Checkout Vectors:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {verdict.dark_patterns_detected.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 font-mono text-[11px] font-medium"
+                          >
+                            <ShieldAlert className="w-3 h-3 text-red-600 flex-shrink-0" />
+                            <span>{tag}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Prominent Action Button: Autonomously Clean Cart */}
+                    {verdict.dark_patterns_detected.length > 0 && (
+                      <div className="pt-2 flex justify-end">
+                        {(() => {
+                          const estSavings =
+                            productInfo?.title.toLowerCase().includes('macbook')
+                              ? 1798
+                              : productInfo?.title.toLowerCase().includes('flight') || productInfo?.title.toLowerCase().includes('indigo')
+                              ? 649
+                              : productInfo?.title.toLowerCase().includes('jordan') || productInfo?.title.toLowerCase().includes('nike')
+                              ? 1040
+                              : 2098;
+                          return (
+                            <button
+                              onClick={handleStripPatterns}
+                              disabled={isStripping}
+                              className="relative group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-display font-semibold text-xs shadow-lg hover:shadow-emerald-500/25 transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            >
+                              {isStripping ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                  <span>TinyAgent Sanitizing Cart...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+                                  <span>Autonomously Clean Cart (Save ₹{estSavings.toLocaleString('en-IN')})</span>
+                                  <Wand2 className="w-3.5 h-3.5 text-white/90 group-hover:rotate-12 transition-transform" />
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </motion.div>
+                )
               )}
 
               {/* Dual View: Live Terminal HUD + Browser Viewport */}

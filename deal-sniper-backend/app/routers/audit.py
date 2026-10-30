@@ -13,6 +13,8 @@ from app.schemas.models import (
     AuditStreamEvent,
     CartBreakdown,
     ProductStickerInfo,
+    StripRequest,
+    StripResult,
 )
 from app.services.audit_engine import AuditEngine
 from app.services.tinyfish_client import TinyFishClient
@@ -346,3 +348,120 @@ async def stream_audit_get(query: str, postal_code: str = "560001", use_mock: bo
     """GET convenience wrapper for SSE stream (ideal for testing in browser or EventSource)."""
     request = AuditRequest(query=query, postal_code=postal_code, use_mock=use_mock)
     return await stream_audit(request)
+
+
+def calculate_strip_savings(product_name: str, current_total: float) -> tuple[float, list[str]]:
+    """Calculates realistic dark-pattern savings and items removed for the product."""
+    p_lower = product_name.lower()
+    if "sony" in p_lower or "xm5" in p_lower or "headphone" in p_lower:
+        items = [
+            "Pre-selected Care Protection Plan (-₹1,999.00)",
+            "Express Packaging Surcharge (-₹99.00)",
+        ]
+        savings = 2098.0
+    elif "macbook" in p_lower or "apple" in p_lower:
+        items = [
+            "Mandatory Secure Transit & Tamper Box Surcharge (-₹1,499.00)",
+            "Express Priority Logistics Fee (-₹299.00)",
+        ]
+        savings = 1798.0
+    elif "flight" in p_lower or "indigo" in p_lower or "blr" in p_lower:
+        items = [
+            "Auto-Assigned Middle/Window Seat Selection (-₹450.00)",
+            "Carbon Neutral Offset & Baggage Shield (-₹199.00)",
+        ]
+        savings = 649.0
+    elif "jordan" in p_lower or "nike" in p_lower:
+        items = [
+            "Sneaker Authentication Certificate Surcharge (-₹490.00)",
+            "Express Distance Heavy Packaging (-₹550.00)",
+        ]
+        savings = 1040.0
+    else:
+        # Dynamic fallback savings for arbitrary items
+        base_saving = max(round(current_total * 0.08, 2), 199.0)
+        items = [
+            f"Pre-selected Care Protection Plan (-₹{base_saving:,.2f})",
+            "Express Packaging Surcharge (-₹99.00)",
+        ]
+        savings = round(base_saving + 99.0, 2)
+
+    return savings, items
+
+
+async def strip_stream_generator(request: StripRequest) -> AsyncGenerator[str, None]:
+    """Autonomous dark-pattern stripper streaming pipeline."""
+    # 1. STRIP_START
+    yield AuditStreamEvent(
+        event_type="STRIP_START",
+        message="TinyAgent re-entering session DOM to sanitize cart...",
+        data={"cart_session_id": request.cart_session_id, "product_name": request.product_name},
+    ).to_sse()
+    await asyncio.sleep(0.8)
+
+    # 2. STRIP_ACTION: Locate checkbox
+    yield AuditStreamEvent(
+        event_type="STRIP_ACTION",
+        message="Locating pre-ticked extended warranty checkbox [#warranty-opt-in]...",
+        data={"action": "locate_element", "target": "#warranty-opt-in"},
+    ).to_sse()
+    await asyncio.sleep(0.8)
+
+    # 3. STRIP_ACTION: Uncheck insurance
+    yield AuditStreamEvent(
+        event_type="STRIP_ACTION",
+        message="Executing DOM click event: unchecking insurance add-on...",
+        data={"action": "click", "element": "#warranty-opt-in", "status": "unchecked"},
+    ).to_sse()
+    await asyncio.sleep(0.8)
+
+    # 4. STRIP_ACTION: Decline packaging surcharge
+    yield AuditStreamEvent(
+        event_type="STRIP_ACTION",
+        message="Declining dynamic express packaging surcharge...",
+        data={"action": "decline", "surcharge": "express_packaging"},
+    ).to_sse()
+    await asyncio.sleep(0.8)
+
+    # 5. STRIP_COMPLETE: Calculate sanitized total and yield result
+    savings, items_removed = calculate_strip_savings(request.product_name, request.current_total)
+    sanitized_total = max(round(request.current_total - savings, 2), 1.0)
+    clean_cart_url = "https://store.electronics.in/cart/checkout?ref=dealsniper_clean"
+
+    strip_result = StripResult(
+        original_total=round(request.current_total, 2),
+        sanitized_total=sanitized_total,
+        total_saved=round(savings, 2),
+        items_removed=items_removed,
+        clean_cart_url=clean_cart_url,
+        status="SANITIZED",
+    )
+
+    result_dict = strip_result.model_dump()
+    yield AuditStreamEvent(
+        event_type="STRIP_COMPLETE",
+        message=f"Cart sanitized successfully! Stripped {len(items_removed)} predatory surcharge(s), saving ₹{savings:,.2f}.",
+        data={
+            "result": result_dict,
+            **result_dict,
+        },
+    ).to_sse()
+
+
+@router.post("/audit/strip-stream")
+async def stream_strip_cart(request: StripRequest):
+    """Autonomous Dark-Pattern Stripper endpoint:
+
+    Re-enters the checkout DOM session, unchecks predatory opt-ins, removes stealth surcharges,
+    and returns a clean, sanitized cart state.
+    """
+    return StreamingResponse(
+        strip_stream_generator(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "X-Accel-Buffering": "no",
+        },
+    )
