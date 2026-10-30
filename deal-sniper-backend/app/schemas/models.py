@@ -52,6 +52,22 @@ class ProductStickerInfo(BaseModel):
     image_url: Optional[str] = Field(default=None, description="Product image thumbnail URL")
 
 
+class ViolationItem(BaseModel):
+    statute: str = Field(..., description="Statute or regulation, e.g. FTC Act Section 5 or CCPA § 1770(a)(22)")
+    violation_type: str = Field(..., description="Type of violation, e.g. Deceptive Drip Pricing")
+    severity: str = Field(..., description="CRITICAL | HIGH | MODERATE")
+    description: str = Field(..., description="Legal rationale explaining the infraction")
+    potential_fine: str = Field(..., description="Statutory penalty or fine exposure")
+
+
+class RegulatoryScorecard(BaseModel):
+    grade: str = Field(..., description="GRADE A | GRADE B | GRADE C | GRADE F")
+    compliance_score: int = Field(..., description="Numeric compliance score from 0 to 100")
+    status_label: str = Field(..., description="Executive compliance status description")
+    violations: List[ViolationItem] = Field(default_factory=list, description="Enumerated statutory infractions")
+    audit_timestamp: str = Field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+
+
 class CartBreakdown(BaseModel):
     base_price: float = Field(..., description="Item listing base price in cart")
     handling_fee: float = Field(default=0.0, description="Platform, convenience, or handling fees")
@@ -64,6 +80,7 @@ class CartBreakdown(BaseModel):
     currency: str = Field(default="INR", description="Currency identifier")
     dark_patterns_detected: List[str] = Field(default_factory=list, description="Identified dark patterns")
     audit_summary: Optional[str] = Field(default=None, description="Human-readable audit breakdown summary")
+    regulatory_scorecard: Optional[RegulatoryScorecard] = Field(default=None, description="FTC & CCPA regulatory scorecard")
 
 
 class AuditStreamEvent(BaseModel):

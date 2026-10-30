@@ -6,6 +6,8 @@ from .models import (
     EventType,
     StripRequest,
     StripResult,
+    ViolationItem,
+    RegulatoryScorecard,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "EventType",
     "StripRequest",
     "StripResult",
+    "ViolationItem",
+    "RegulatoryScorecard",
 ]

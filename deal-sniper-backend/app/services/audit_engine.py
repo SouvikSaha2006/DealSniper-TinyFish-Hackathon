@@ -1,6 +1,6 @@
 import re
 from typing import Any, Dict, List, Optional
-from app.schemas.models import CartBreakdown, ProductStickerInfo
+from app.schemas.models import CartBreakdown, ProductStickerInfo, RegulatoryScorecard, ViolationItem
 
 
 class AuditEngine:
@@ -131,6 +131,12 @@ class AuditEngine:
                 f"Pricing Verified: Advertised price of {currency} {advertised_price:,.2f} matches checkout total."
             )
 
+        regulatory_scorecard = cls.evaluate_regulatory_compliance(
+            advertised_price=advertised_price,
+            total_checkout_price=final_total,
+            dark_patterns=dark_patterns,
+        )
+
         return CartBreakdown(
             base_price=round(base_price, 2),
             handling_fee=round(handling_fee, 2),
@@ -143,4 +149,106 @@ class AuditEngine:
             currency=currency,
             dark_patterns_detected=dark_patterns,
             audit_summary=summary,
+            regulatory_scorecard=regulatory_scorecard,
+        )
+
+    @classmethod
+    def evaluate_regulatory_compliance(
+        cls,
+        advertised_price: float,
+        total_checkout_price: float,
+        dark_patterns: List[str],
+    ) -> RegulatoryScorecard:
+        """Evaluates detected drip fees and dark patterns against official consumer
+
+        protection mandates (FTC Section 5, FTC 16 CFR Part 464, and CCPA § 1770(a)(22)).
+        """
+        delta_amount = total_checkout_price - advertised_price
+        if advertised_price > 0:
+            delta_percentage = (delta_amount / advertised_price) * 100.0
+        else:
+            delta_percentage = 0.0
+
+        # Filter out "Transparent Pricing" placeholder if present
+        actual_patterns = [p for p in dark_patterns if "Transparent Pricing" not in p]
+        has_patterns = len(actual_patterns) > 0
+
+        # Scoring Rubric:
+        # 1. Delta == 0% and no dark patterns: GRADE A, Score 98
+        if delta_percentage <= 0.01 and not has_patterns:
+            return RegulatoryScorecard(
+                grade="GRADE A",
+                compliance_score=98,
+                status_label="Full Compliance",
+                violations=[],
+            )
+
+        # 2. Delta <= 7% and no active dark pattern tricks: GRADE B, Score 82
+        if delta_percentage <= 7.0 and not has_patterns:
+            return RegulatoryScorecard(
+                grade="GRADE B",
+                compliance_score=82,
+                status_label="Standard Surcharges Disclosed",
+                violations=[],
+            )
+
+        # 3. Delta > 7% or predatory dark patterns flagged: GRADE F, Score 34
+        patterns_str = " ".join(actual_patterns).lower()
+        violations: List[ViolationItem] = []
+
+        # Check for pre-ticked affirmative consent traps / warranty sneak-ins
+        if any(w in patterns_str for w in ["sneak", "protection", "warranty", "insurance", "pre-ticked", "surcharge"]):
+            violations.append(
+                ViolationItem(
+                    statute="FTC Policy Statement on Negative Option Marketing",
+                    violation_type="Pre-ticked Affirmative Consent Trap",
+                    severity="CRITICAL",
+                    description="Pre-selecting add-on warranties without explicit affirmative opt-in constitutes an unfair trade practice.",
+                    potential_fine="$50,120 per civil infraction",
+                )
+            )
+
+        # Check for mandatory hidden drip pricing / handling fees
+        if any(w in patterns_str for w in ["drip", "handling", "platform", "convenience", "fee", "packaging", "bait-and-switch"]) or delta_percentage > 7.0:
+            violations.append(
+                ViolationItem(
+                    statute="FTC Trade Regulation on Hidden Fees (16 CFR Part 464)",
+                    violation_type="Mandatory Hidden Surcharge (Drip Pricing)",
+                    severity="CRITICAL",
+                    description="Failing to disclose unavoidable handling fees in the initial advertised price distorts market comparison.",
+                    potential_fine="Statutory restitution & civil penalties",
+                )
+            )
+
+        # Check for delivery / geographic surcharges withheld until payment step
+        if any(w in patterns_str for w in ["last-mile", "delivery", "shipping", "distance", "pincode", "postal", "surge"]):
+            violations.append(
+                ViolationItem(
+                    statute="CCPA § 1770(a)(22) Unfair Competition Law",
+                    violation_type="Deceptive Geographic Surcharge",
+                    severity="HIGH",
+                    description="Withholding delivery surcharges until the final payment gateway entry.",
+                    potential_fine="Up to $7,500 per intentional violation",
+                )
+            )
+
+        # Ensure at least one violation is listed if graded F
+        if not violations:
+            violations.append(
+                ViolationItem(
+                    statute="FTC Trade Regulation on Hidden Fees (16 CFR Part 464)",
+                    violation_type="Mandatory Hidden Surcharge (Drip Pricing)",
+                    severity="CRITICAL",
+                    description="Accumulation of undisclosed mandatory fees resulted in deceptive post-advertised price hike.",
+                    potential_fine="Statutory restitution & civil penalties",
+                )
+            )
+
+        score = max(int(100 - (delta_percentage * 2.2) - (len(violations) * 15)), 18)
+
+        return RegulatoryScorecard(
+            grade="GRADE F",
+            compliance_score=score,
+            status_label="Deceptive Drip Pricing Violation",
+            violations=violations,
         )

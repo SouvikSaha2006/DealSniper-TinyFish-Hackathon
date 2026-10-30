@@ -285,6 +285,7 @@ async def generate_mock_stream(query: str, postal_code: str = "560001") -> Async
         data={
             "product": sticker_info.model_dump(),
             "cart_breakdown": cart_breakdown.model_dump(),
+            "regulatory_scorecard": cart_breakdown.regulatory_scorecard.model_dump() if cart_breakdown.regulatory_scorecard else None,
             "postal_code": postal_code,
         },
     ).to_sse()

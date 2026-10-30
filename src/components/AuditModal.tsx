@@ -17,10 +17,14 @@ import {
   Lock,
   ExternalLink,
   Wand2,
+  Scale,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   streamAudit,
   streamStripCart,
+  computeRegulatoryScorecard,
   AuditEvent,
   CartBreakdown,
   ProductInfo,
@@ -46,6 +50,7 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
   const [activePresetId, setActivePresetId] = useState<string>('sony-xm5');
   const [isStripping, setIsStripping] = useState(false);
   const [strippedResult, setStrippedResult] = useState<StripResult | null>(null);
+  const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false);
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -433,6 +438,129 @@ export default function AuditModal({ isOpen, onClose, initialQuery = '' }: Audit
                         Delta: +{verdict.currency} {verdict.delta_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (+{verdict.delta_percentage.toFixed(1)}%)
                       </div>
                     </div>
+
+                    {/* Executive Regulatory Compliance Badge & Collapsible Drawer Trigger */}
+                    {(() => {
+                      const scorecard = verdict.regulatory_scorecard || computeRegulatoryScorecard(verdict);
+                      const isGradeF = scorecard.grade === 'GRADE F';
+                      const violations = scorecard.violations || [];
+
+                      return (
+                        <div className="space-y-2 pt-0.5">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            {/* Compliance Badge */}
+                            {isGradeF ? (
+                              <div className="bg-red-500/10 text-red-600 border border-red-500/20 px-3 py-1 rounded-full font-semibold text-xs flex items-center gap-1.5 shadow-sm">
+                                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                                <span>Grade F: Severe Drip Pricing Violation (FTC 16 CFR § 464)</span>
+                              </div>
+                            ) : (
+                              <div className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-3 py-1 rounded-full font-semibold text-xs flex items-center gap-1.5 shadow-sm">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Grade A: Full Pricing Transparency</span>
+                              </div>
+                            )}
+
+                            {/* Collapsible Trigger */}
+                            {violations.length > 0 && (
+                              <button
+                                onClick={() => setIsLegalDrawerOpen((prev) => !prev)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-background/80 hover:bg-secondary border border-border text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Scale className="w-3.5 h-3.5 text-amber-600" />
+                                <span>View Legal Compliance Audit ({violations.length} Violations Flagged)</span>
+                                {isLegalDrawerOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Interactive Compliance Inspection Drawer */}
+                          <AnimatePresence>
+                            {isLegalDrawerOpen && violations.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                className="overflow-hidden rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 space-y-3"
+                              >
+                                {/* Header */}
+                                <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                    <span className="font-display font-bold text-xs text-foreground tracking-tight">
+                                      Consumer Protection & Dark-Pattern Audit
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground">
+                                    CCPA § 1770(a)(22) • FTC 16 CFR Part 464
+                                  </span>
+                                </div>
+
+                                {/* Statutory Summary */}
+                                <p className="text-[11px] text-amber-900 dark:text-amber-200 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 font-medium leading-relaxed">
+                                  ⚠️ <span className="font-semibold">Statutory Risk Finding:</span> This checkout funnel violates FTC guidelines on deceptive pricing, exposing the merchant to regulatory enforcement.
+                                </p>
+
+                                {/* Compliance Table */}
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-[11px] font-body border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-border/70 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <th className="py-2 px-2.5">Statute / Mandate</th>
+                                        <th className="py-2 px-2.5">Pattern Classification</th>
+                                        <th className="py-2 px-2.5">Severity</th>
+                                        <th className="py-2 px-2.5">Statutory Liability</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/40">
+                                      {violations.map((v, i) => {
+                                        const isCritical = v.severity === 'CRITICAL';
+                                        return (
+                                          <tr key={i} className="hover:bg-background/40 transition-colors">
+                                            <td className="py-2 px-2.5 font-mono font-medium text-foreground">
+                                              {v.statute.includes('16 CFR') ? (
+                                                <span className="inline-flex items-center gap-1 font-semibold text-red-600 dark:text-red-400">
+                                                  {v.statute}
+                                                </span>
+                                              ) : v.statute.includes('CCPA') ? (
+                                                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                                                  {v.statute}
+                                                </span>
+                                              ) : (
+                                                v.statute
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-2.5 text-foreground/90">
+                                              <span className="font-semibold block">{v.violation_type}</span>
+                                              <span className="text-[10px] text-muted-foreground block">{v.description}</span>
+                                            </td>
+                                            <td className="py-2 px-2.5">
+                                              <span
+                                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                                                  isCritical
+                                                    ? 'bg-red-600 text-white'
+                                                    : 'bg-amber-500 text-amber-950 font-bold'
+                                                }`}
+                                              >
+                                                {v.severity}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 px-2.5 font-mono text-[10px] font-semibold text-foreground/80">
+                                              {v.potential_fine}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })()}
 
                     {/* Price Comparison Summary */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">

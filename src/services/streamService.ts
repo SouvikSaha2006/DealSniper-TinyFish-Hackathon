@@ -8,6 +8,9 @@ export interface ProductInfo {
   image_url?: string;
 }
 
+export type { ViolationItem, RegulatoryScorecard } from '../types';
+import type { RegulatoryScorecard, ViolationItem } from '../types';
+
 export interface CartBreakdown {
   base_price: number;
   handling_fee: number;
@@ -20,6 +23,7 @@ export interface CartBreakdown {
   currency: string;
   dark_patterns_detected: string[];
   audit_summary?: string;
+  regulatory_scorecard?: RegulatoryScorecard;
 }
 
 export interface StripRequest {
@@ -112,6 +116,57 @@ export const DEMO_PRESETS: DemoPreset[] = [
     expected_pattern: 'Auto-assigned paid seat + Convenience charge (+30.9% Surge)',
   },
 ];
+
+export function computeRegulatoryScorecard(cart: CartBreakdown): RegulatoryScorecard {
+  if (cart.regulatory_scorecard) return cart.regulatory_scorecard;
+
+  const delta = cart.delta_percentage || 0;
+  const hasPatterns = cart.dark_patterns_detected && cart.dark_patterns_detected.length > 0;
+
+  if (delta <= 0.01 && !hasPatterns) {
+    return {
+      grade: 'GRADE A',
+      compliance_score: 98,
+      status_label: 'Full Pricing Transparency',
+      violations: [],
+      audit_timestamp: new Date().toISOString(),
+    };
+  }
+
+  const violations: ViolationItem[] = [
+    {
+      statute: 'FTC Trade Regulation on Hidden Fees (16 CFR Part 464)',
+      violation_type: 'Mandatory Hidden Surcharge (Drip Pricing)',
+      severity: 'CRITICAL',
+      description: 'Failing to disclose unavoidable handling and platform fees in the initial advertised sticker price distorts market competition.',
+      potential_fine: 'Statutory restitution & civil penalties',
+    },
+    {
+      statute: 'FTC Policy Statement on Negative Option Marketing',
+      violation_type: 'Pre-ticked Affirmative Consent Trap',
+      severity: 'CRITICAL',
+      description: 'Pre-selecting add-on warranties, protection plans, or priority baggage without affirmative consumer opt-in constitutes an unfair trade practice.',
+      potential_fine: '$50,120 per civil infraction',
+    },
+    {
+      statute: 'CCPA § 1770(a)(22) Unfair Competition Law',
+      violation_type: 'Deceptive Geographic Surcharge',
+      severity: 'HIGH',
+      description: 'Withholding delivery surcharges and distance levies until the final payment gateway screen.',
+      potential_fine: 'Up to $7,500 per intentional violation',
+    },
+  ];
+
+  const score = Math.max(Math.round(100 - delta * 2.2 - violations.length * 15), 24);
+
+  return {
+    grade: 'GRADE F',
+    compliance_score: score,
+    status_label: 'Severe Drip Pricing Violation (FTC 16 CFR § 464)',
+    violations,
+    audit_timestamp: new Date().toISOString(),
+  };
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -305,6 +360,9 @@ async function runClientMockStream(
 
   if (signal?.aborted) return;
 
+  // Compute regulatory scorecard for mock breakdown
+  cartBreakdown.regulatory_scorecard = computeRegulatoryScorecard(cartBreakdown);
+
   // Step 5: AUDIT_COMPLETE
   onEvent({
     type: 'AUDIT_COMPLETE',
@@ -314,6 +372,7 @@ async function runClientMockStream(
     data: {
       product,
       cart_breakdown: cartBreakdown,
+      regulatory_scorecard: cartBreakdown.regulatory_scorecard,
       postal_code: postalCode,
     },
   });
@@ -387,6 +446,13 @@ export async function streamAudit(
               normalizedType = 'STREAMING_URL';
             } else if (serverEvent === 'AUDIT_COMPLETE') {
               normalizedType = 'AUDIT_COMPLETE';
+              if (data.cart_breakdown) {
+                if (!data.cart_breakdown.regulatory_scorecard && data.regulatory_scorecard) {
+                  data.cart_breakdown.regulatory_scorecard = data.regulatory_scorecard;
+                } else if (!data.cart_breakdown.regulatory_scorecard) {
+                  data.cart_breakdown.regulatory_scorecard = computeRegulatoryScorecard(data.cart_breakdown);
+                }
+              }
             } else if (serverEvent === 'ERROR') {
               normalizedType = 'ERROR';
             }
